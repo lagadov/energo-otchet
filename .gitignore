@@ -1,0 +1,18 @@
+# Node / React
+node_modules/
+dist/
+# .NET
+bin/
+obj/
+*.user
+# Python
+__pycache__/
+# Среда и тайни — никога в хранилището
+.env
+.env.*
+!.env.example
+# Редактор и ОС
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
