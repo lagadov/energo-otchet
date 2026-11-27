@@ -1,0 +1,62 @@
+# Цялата система с една команда: docker compose up --build
+# Преди това: копирай .env.example като .env.
+# Портовете са отворени само за тази машина (127.0.0.1): услугата още не проверява
+# кой изпраща показанията, затова не бива да е достъпна от мрежата.
+
+services:
+  baza:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: energo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Липсва POSTGRES_PASSWORD в .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Липсва APP_DB_PASSWORD в .env}
+    volumes:
+      - ./baza/init:/docker-entrypoint-initdb.d:ro
+      - danni:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d energo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Портът на базата не се отваря навън: достъп има само услугата.
+
+  usluga:
+    build:
+      context: .
+      dockerfile: usluga/Dockerfile
+    image: energo-otchet/usluga:local
+    environment:
+      DATABASE_URL: postgres://energo_app:${APP_DB_PASSWORD}@baza:5432/energo
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      baza:
+        condition: service_healthy
+
+  simulator:
+    image: energo-otchet/usluga:local
+    command: ["node", "usluga/dist/simulator.js"]
+    environment:
+      USLUGA_URL: http://usluga:3000
+      BROI_ELEKTROMERI: "5"
+      INTERVAL_MS: "1000"
+    healthcheck:
+      disable: true
+    depends_on:
+      usluga:
+        condition: service_healthy
+
+  tablo:
+    build:
+      context: .
+      dockerfile: tablo/Dockerfile
+    image: energo-otchet/tablo:local
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      usluga:
+        condition: service_healthy
+
+volumes:
+  danni:
