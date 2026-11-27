@@ -1,0 +1,82 @@
+# Конвейер: всяка промяна се проверява, системата се изгражда и пуска на чиста машина,
+# а списъкът на съставките (SBOM) и образите се пазят като артефакти.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  proverka:
+    name: Типове и тестове
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run tipove
+      - run: npm test
+
+  sistema:
+    name: Изграждане, пускане, SBOM
+    needs: proverka
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Среда за изпълнение (без истински тайни)
+        run: |
+          echo "POSTGRES_PASSWORD=ci-$(openssl rand -hex 12)" >> .env
+          echo "APP_DB_PASSWORD=ci-$(openssl rand -hex 12)" >> .env
+
+      - name: Изграждане на образите
+        run: docker compose build
+
+      - name: Пускане и изчакване да станат здрави
+        run: docker compose up -d --wait --wait-timeout 120
+
+      - name: Проверка от край до край
+        run: bash scripts/proverka-sistema.sh
+
+      - name: Логове при неуспех
+        if: failure()
+        run: docker compose logs
+
+      - name: SBOM на услугата
+        uses: anchore/sbom-action@v0
+        with:
+          image: energo-otchet/usluga:local
+          format: cyclonedx-json
+          output-file: sbom-usluga.cdx.json
+          upload-artifact: false
+
+      - name: SBOM на таблото
+        uses: anchore/sbom-action@v0
+        with:
+          image: energo-otchet/tablo:local
+          format: cyclonedx-json
+          output-file: sbom-tablo.cdx.json
+          upload-artifact: false
+
+      - name: Запис на образите като файл
+        run: docker save energo-otchet/usluga:local energo-otchet/tablo:local | gzip > obrazi.tar.gz
+
+      - name: Артефакти
+        uses: actions/upload-artifact@v4
+        with:
+          name: energo-otchet-${{ github.sha }}
+          path: |
+            sbom-usluga.cdx.json
+            sbom-tablo.cdx.json
+            obrazi.tar.gz
+          retention-days: 14
+
+      - name: Спиране
+        if: always()
+        run: docker compose down -v
