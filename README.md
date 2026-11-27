@@ -29,6 +29,47 @@
 3. [Работни сесии](docs/sesii.csv) — машинният запис, от който идва колоната „реално“.
 4. Етапите: [Е1](docs/e1/README.md) · [Е2](docs/e2/README.md) · [Е3](docs/e3/README.md) · [Портфолио](docs/portfolio/README.md).
 
+## Как се изгражда и пуска
+
+Нужни са само **Git** и **Docker** (с Docker Compose). Нищо друго не се инсталира.
+
+```bash
+git clone https://github.com/lagadov/energo-otchet.git
+cd energo-otchet
+cp .env.example .env        # Windows PowerShell: Copy-Item .env.example .env
+docker compose up --build
+```
+
+След около минута:
+
+| Адрес | Какво има там |
+|---|---|
+| http://localhost:8080 | таблото: консумация по електромер и сигнали |
+| http://localhost:3000/openapi.json | договорът на API-то (OpenAPI 3) |
+| http://localhost:3000/health | здравна проверка на услугата |
+
+Симулаторът започва от 30 дни назад и изпраща по едно показание на 15 симулирани минути
+за пет електромера, за да има история веднага.
+
+Проверка от край до край (Linux, macOS или Git Bash на Windows): `bash scripts/proverka-sistema.sh`.
+Спиране: `docker compose down` (с `-v` се изтрива и базата).
+
+### Разработка без контейнери
+
+Нужен е Node.js 24. `npm ci`, после `npm run tipove` и `npm test` в корена.
+
+## Структура
+
+| Папка | Какво е |
+|---|---|
+| `usluga/` | услугата за показания: Fastify + TypeScript; модули `priemane`, `otcheti`, `signali` |
+| `usluga/src/dogovor.ts` | договорът: типове и JSON схеми, общи за услугата и таблото |
+| `usluga/src/simulator.ts` | симулаторът на електромери |
+| `tablo/` | таблото: React + Vite + TypeScript, сервирано от nginx |
+| `baza/init/` | схемата на базата и правата на потребителя на приложението |
+| `.github/workflows/ci.yml` | конвейерът: типове, тестове, изграждане, пускане, SBOM |
+| `docs/` | профил, ADR, дневници, декларация за ИИ |
+
 ## Изчисляване на реалните часове
 
 ```bash
