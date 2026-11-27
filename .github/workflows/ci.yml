@@ -13,15 +13,42 @@ jobs:
   proverka:
     name: Типове и тестове
     runs-on: ubuntu-24.04
+    services:
+      # Истинска база за тестовете за едновременни заявки и права (usluga/test/postgres.test.ts).
+      baza:
+        image: postgres:18-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
+        env:
+          POSTGRES_DB: energo
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-samo-za-testove
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d energo"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://energo_app:ci-app@localhost:5432/energo
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+
+      - name: Схема на базата — същият скрипт като в Docker Compose
+        env:
+          PGHOST: localhost
+          PGPASSWORD: ci-samo-za-testove
+          POSTGRES_USER: postgres
+          POSTGRES_DB: energo
+          APP_DB_PASSWORD: ci-app
+        run: sh baza/init/01-skhema.sh
+
       - run: npm ci
       - run: npm run tipove
       - run: npm test
+      - name: Тестове на скрипта за часовете
+        run: python3 -m unittest discover -s tests
 
   sistema:
     name: Изграждане, пускане, SBOM

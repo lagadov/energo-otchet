@@ -17,7 +17,8 @@ const VID_SIGNAL: Record<Signal["vid"], string> = {
 export function App() {
   const [elektromeri, setElektromeri] = useState<string[]>([]);
   const [izbran, setIzbran] = useState<string>("");
-  const [dni, setDni] = useState(1);
+  // 30 дни по подразбиране: симулаторът започва месец назад и „24 часа“ е празно, докато не стигне днес.
+  const [dni, setDni] = useState(30);
   const [konsumaciya, setKonsumaciya] = useState<Konsumaciya | null>(null);
   const [signali, setSignali] = useState<Signal[]>([]);
   const [greshka, setGreshka] = useState<string | null>(null);

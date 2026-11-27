@@ -22,6 +22,14 @@ class TestChasove(unittest.TestCase):
         ]
         self.assertEqual(dict(po_etapi(redove)), {"Е1": 2.0, "Е2": 0.5})
 
+    def test_nepalen_red_kazva_koi(self):
+        redove = [
+            {"етап": "Е1", "начало": "10:00", "край": "11:00"},
+            {"етап": ".", "начало": "12:50", "край": ""},
+        ]
+        with self.assertRaisesRegex(ValueError, "ред 3"):
+            po_etapi(redove)
+
 
 if __name__ == "__main__":
     unittest.main()
